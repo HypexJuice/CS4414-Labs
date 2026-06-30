@@ -1,0 +1,217 @@
+Lab 1 Assignment: Counter Statistics
+=====================================
+
+INTRODUCTION
+------------
+
+You will build a small performance monitor accumulator that tracks simulated
+CPU idle-percentage samples (values from 0 to 100). Instead of scattering loose
+variables, you will group related counters in a struct and attach update logic
+as methods — similar in spirit to how kernel stat structures group related
+counters, but without inheritance.
+
+Deliverable: Implement everything in src/lib.rs so that cargo test exits with
+status 0.
+
+
+SETUP
+-----
+
+1. Install rustup (stable toolchain): https://rustup.rs/
+
+2. Clone the course labs repository and enter this crate:
+
+   git clone https://github.com/HypexJuice/CS4414-Labs.git
+   cd CS4414-Labs/lab1-counter-stats
+
+3. Run cargo test. On the starter code, you should see compile errors until
+   you implement the types below. That is normal.
+
+
+PART 1 — THE IdleLevel ENUM
+---------------------------
+
+Define a public enum named IdleLevel with exactly three variants:
+
+  Variant   Meaning                      Sample range (inclusive)
+  -------   --------------------------   ------------------------
+  Low       CPU mostly busy (low idle)   0 – 33
+  Medium    Mixed load                   34 – 66
+  High      CPU mostly idle              67 – 100
+
+Boundary examples (all inclusive):
+
+  33 -> Low
+  34 -> Medium
+  66 -> Medium
+  67 -> High
+
+Classifier (Milestone 2)
+------------------------
+
+On IdleLevel, implement a public associated function (no receiver) named
+from_sample that:
+
+  - Accepts one sample value (u32, always in range 0–100).
+  - Returns the matching IdleLevel variant.
+  - Uses a match expression on the sample to select the variant. Do not
+    duplicate these thresholds anywhere else in your code.
+
+Your enum must support equality (for example, derive PartialEq and Eq).
+
+
+PART 2 — THE Stats STRUCT
+-------------------------
+
+Define a public struct named Stats with these public fields:
+
+  Field          Type     Meaning
+  -----          ----     -------
+  count          usize    Number of samples recorded
+  sum            u64      Running total of sample values (use u64 to avoid overflow)
+  min            u32      Smallest sample seen so far
+  max            u32      Largest sample seen so far
+  low_count      usize    Samples classified as Low
+  medium_count   usize    Samples classified as Medium
+  high_count     usize    Samples classified as High
+
+All fields are public for this lab. A later lab will make fields private and
+introduce visibility controls.
+
+
+PART 3 — METHODS
+----------------
+
+Implement an impl Stats block with the following behavior.
+
+Empty constructor — Milestone 1 (new)
+-------------------------------------
+Provide an associated function (no receiver) that returns a new empty Stats:
+
+  - Set count, sum, and all three tier counters to zero.
+  - Set min to the largest possible u32 value and max to zero, so the first
+    recorded sample can establish real minimum and maximum without special
+    empty-state logic in the update method.
+
+Incremental update — Milestone 3 (record)
+-----------------------------------------
+Provide a method on a mutable reference to Stats that accepts one in-range u32
+sample and updates the struct in place:
+
+  - Increment count by 1.
+  - Add the sample to sum.
+  - Update min and max if the sample is smaller or larger than the current
+    extrema.
+  - Classify the sample using IdleLevel::from_sample and increment the matching
+    tier counter (low_count, medium_count, or high_count).
+
+Batch builder — Milestone 4 (from_samples)
+------------------------------------------
+Provide an associated function that accepts a fixed-size array of eight u32
+samples, builds a fresh accumulator using the constructor, loops over each
+element with for, calls the update method for each sample, and returns the
+fully populated Stats.
+
+
+WORKED EXAMPLE
+--------------
+
+After calling the batch builder with this array:
+
+  [42, 15, 88, 15, 60, 42, 100, 7]
+
+the resulting Stats should have:
+
+  Field          Expected value
+  -----          ----------------
+  count          8
+  sum            369
+  min            7
+  max            100
+  low_count      3  (samples 15, 15, 7)
+  medium_count   3  (samples 42, 60, 42)
+  high_count     2  (samples 88, 100)
+
+Use this to sanity-check your implementation before running the full test suite.
+
+
+RULES
+-----
+
+1. Keep classification logic on IdleLevel and aggregation logic on Stats. Do
+   not use separate free functions for borrows beyond method receivers.
+
+2. Required patterns for this lab: &mut self on the update method; Self (or the
+   struct name) as the return type on constructors; match on the enum
+   classifier.
+
+3. You may use: struct, enum, match, impl, let, mut, if/else, for, and derive
+   macros such as PartialEq.
+
+4. Do not use: Vec, Option, Result, traits, I/O, owned String, or move-out of
+   struct fields.
+
+5. You may assume every sample passed to the update method is in range 0–100.
+
+
+MILESTONES
+----------
+
+  Milestone   You implement                              Check progress with
+  ---------   -----------------------------------------  -------------------
+  M1          IdleLevel enum, Stats fields, new()         cargo test m1_
+  M2          from_sample classifier with match          cargo test m2_
+  M3          Update method (record)                     cargo test m3_
+  M4          Batch builder (from_samples)               cargo test m4_
+
+When all milestones pass, run cargo test with no filter to confirm the full
+suite.
+
+
+CONCEPT CALLOUTS
+----------------
+
+  enum                A type with a fixed set of named variants (Low, Medium, High).
+  match               Exhaustively branch on a value; use range patterns like 0..=33.
+  struct              Named fields grouping related data.
+  impl Type { ... }   Methods and associated functions attached to a type.
+  Associated function Function in impl with no self parameter (e.g. Stats::new()).
+  Method              Function in impl with &self, &mut self, or self.
+  Self                Alias for the type being implemented inside an impl block.
+  cargo test          Compile and run tests; your primary feedback loop.
+
+
+GRADING
+-------
+
+  Criterion                              Weight
+  -------------------------------------  ------
+  All tests pass (cargo test)            90%
+  Optional: two sentences — one Rust      10%
+  difference you noticed vs C/C++
+
+
+OPTIONAL STRETCH (not graded)
+-----------------------------
+
+Add a method on &self named mean that returns the integer average of recorded
+samples (sum / count), or 0 when count is zero.
+
+
+FAQ
+---
+
+Q: cargo test fails with "cannot find type Stats in crate".
+A: You have not defined the struct yet. Start with Milestone 1.
+
+Q: What is Self?
+A: Inside impl Stats, Self means Stats. It is idiomatic for constructors that
+   return the type being implemented.
+
+Q: Can I use if instead of match for classification?
+A: The assignment requires a match expression on the enum classifier for
+   Milestone 2.
+
+Q: Should tier thresholds appear in record?
+A: No. Call IdleLevel::from_sample and branch on the result so thresholds live
+   in one place.

@@ -1,0 +1,5 @@
+/target/
+**/.solution/
+.DS_Store
+.idea/
+.vscode/

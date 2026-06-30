@@ -1,0 +1,22 @@
+name: Lab3 CI
+
+on:
+  push:
+    paths:
+      - "lab3-process-registry/**"
+      - ".github/workflows/lab3-ci.yml"
+  pull_request:
+    paths:
+      - "lab3-process-registry/**"
+      - ".github/workflows/lab3-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run lab3 tests with reference solution
+        run: |
+          cp .solution/lab3/src/lib.rs lab3-process-registry/src/lib.rs
+          cargo test --manifest-path lab3-process-registry/Cargo.toml

@@ -1,0 +1,22 @@
+name: Lab2 CI
+
+on:
+  push:
+    paths:
+      - "lab2-process-registry/**"
+      - ".github/workflows/lab2-ci.yml"
+  pull_request:
+    paths:
+      - "lab2-process-registry/**"
+      - ".github/workflows/lab2-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run lab2 tests with reference solution
+        run: |
+          cp .solution/lab2/src/lib.rs lab2-process-registry/src/lib.rs
+          cargo test --manifest-path lab2-process-registry/Cargo.toml
