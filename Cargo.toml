@@ -1,3 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["lab2-process-registry", "lab3-process-registry"]
+members = [
+    "lab1-counter-stats",
+    "lab2-process-registry",
+    "lab3-process-registry",
+]

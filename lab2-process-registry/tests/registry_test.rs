@@ -25,44 +25,10 @@ fn m1_set_state_updates() {
     assert_eq!(process.state(), ProcessState::Sleeping);
 }
 
-// --- Milestone 2: memory layout helpers and global capacity constant ---
+// --- Milestone 2: Registry construction, register, capacity ---
 
 #[test]
-fn m2_process_state_size() {
-    assert!(Process::process_state_stack_bytes() >= 1);
-}
-
-#[test]
-fn m2_process_struct_fixed_size() {
-    let short = Process::new(1, "a".into()).expect("valid name");
-    let long = Process::new(2, "a".repeat(10_000)).expect("valid name");
-    assert_eq!(
-        Process::process_struct_stack_bytes(),
-        std::mem::size_of_val(&short)
-    );
-    assert_eq!(
-        Process::process_struct_stack_bytes(),
-        std::mem::size_of_val(&long)
-    );
-}
-
-#[test]
-fn m2_reference_is_pointer_sized() {
-    assert_eq!(
-        Process::reference_stack_bytes(),
-        std::mem::size_of::<usize>()
-    );
-}
-
-#[test]
-fn m2_max_processes_const() {
-    assert_eq!(Registry::MAX_PROCESSES, 8);
-}
-
-// --- Milestone 3: Registry construction, register, capacity ---
-
-#[test]
-fn m3_register_moves_ownership() {
+fn m2_register_moves_ownership() {
     let mut registry = Registry::new();
     assert_eq!(registry.len(), 0);
 
@@ -70,14 +36,14 @@ fn m3_register_moves_ownership() {
     registry
         .register(process)
         .expect("registry should accept process");
-  // `process` is moved; the line below must not compile if uncommented:
-  // let _ = process.pid();
+    // `process` is moved; the line below must not compile if uncommented:
+    // let _ = process.pid();
 
     assert_eq!(registry.len(), 1);
 }
 
 #[test]
-fn m3_register_respects_capacity() {
+fn m2_register_respects_capacity() {
     let mut registry = Registry::new();
     for pid in 0..Registry::MAX_PROCESSES {
         let name = format!("p{pid}");
@@ -89,10 +55,15 @@ fn m3_register_respects_capacity() {
     assert_eq!(registry.len(), Registry::MAX_PROCESSES);
 }
 
-// --- Milestone 4: immutable borrows via get and find_by_pid ---
+#[test]
+fn m2_max_processes_const() {
+    assert_eq!(Registry::MAX_PROCESSES, 8);
+}
+
+// --- Milestone 3: immutable and mutable borrows via get / get_mut ---
 
 #[test]
-fn m4_get_and_find_by_pid() {
+fn m3_get_by_index() {
     let mut registry = Registry::new();
     registry
         .register(Process::new(1, "init".into()).expect("valid"))
@@ -106,13 +77,12 @@ fn m4_get_and_find_by_pid() {
 
     assert_eq!(registry.get(1).unwrap().pid(), 42);
     assert_eq!(registry.get(1).unwrap().name(), "shell");
-    assert_eq!(registry.find_by_pid(99).unwrap().name(), "logger");
+    assert_eq!(registry.get(2).unwrap().name(), "logger");
     assert!(registry.get(3).is_none());
-    assert!(registry.find_by_pid(0).is_none());
 }
 
 #[test]
-fn m4_borrowed_name_does_not_allocate() {
+fn m3_borrowed_name_does_not_allocate() {
     let mut registry = Registry::new();
     registry
         .register(Process::new(10, "metrics".into()).expect("valid"))
@@ -121,10 +91,8 @@ fn m4_borrowed_name_does_not_allocate() {
     assert_eq!(name, "metrics");
 }
 
-// --- Milestone 5: mutable borrows and remove (ownership out) ---
-
 #[test]
-fn m5_get_mut_updates_state() {
+fn m3_get_mut_updates_state() {
     let mut registry = Registry::new();
     registry
         .register(Process::new(1, "init".into()).expect("valid"))
@@ -144,23 +112,5 @@ fn m5_get_mut_updates_state() {
         registry.get(2).unwrap().state(),
         ProcessState::Stopped
     );
-    assert_eq!(registry.find_by_pid(1).unwrap().pid(), 1);
-}
-
-#[test]
-fn m5_remove_returns_owner() {
-    let mut registry = Registry::new();
-    registry
-        .register(Process::new(5, "temp".into()).expect("valid"))
-        .expect("register");
-    registry
-        .register(Process::new(6, "keep".into()).expect("valid"))
-        .expect("register");
-
-    let removed = registry.remove(0).expect("index 0 exists");
-    assert_eq!(removed.pid(), 5);
-    assert_eq!(removed.name(), "temp");
-    assert_eq!(registry.len(), 1);
-    assert_eq!(registry.get(0).unwrap().pid(), 6);
-    assert!(registry.remove(5).is_none());
+    assert_eq!(registry.get(0).unwrap().pid(), 1);
 }

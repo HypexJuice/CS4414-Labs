@@ -1,316 +1,106 @@
-Lab 2 Assignment: Process Registry
-==================================
+Lab 2: Process Registry
+=======================
 
 INTRODUCTION
 ------------
 
-You will build a miniature process registry — a table that tracks simulated OS
-processes, each with a process ID, a name, and a runtime state. Real kernels
-keep process metadata in structured types whose fields are not directly
-accessible; callers use a controlled API instead. Lab 1 used public fields on
-Stats for simplicity. In this lab you hide representation details and expose
-behavior through methods.
+Lab 1 summarized CPU idle samples. Now track the processes on the machine.
 
-Deliverable: Implement everything in src/lib.rs so that cargo test exits with
-status 0.
+Implement a process table. Each process has a PID, name, and state:
+Running, Sleeping, or Stopped. Store processes in a Registry backed by
+Vec<Box<Process>>.
+
+Lab 1 used public struct fields. Here the fields are private; use methods to
+read and update them.
+
+Put all code in src/lib.rs. Run cargo test when you are done.
 
 
 SETUP
 -----
 
 1. Install rustup (stable toolchain): https://rustup.rs/
-
 2. Clone the course labs repository and enter this crate:
 
    git clone https://github.com/HypexJuice/CS4414-Labs.git
    cd CS4414-Labs/lab2-process-registry
 
-3. Run cargo test. On the starter code, you should see compile errors until
-   you implement the types below. That is normal.
+3. Run cargo test. The starter code will not compile until you add the types
+   below.
 
 
-PART 1 — THE ProcessState ENUM
-------------------------------
-
-Define a public enum named ProcessState with exactly three variants:
-
-  Variant    Meaning
-  -------    ---------------------------------
-  Running    Process is actively executing
-  Sleeping   Process is blocked or waiting
-  Stopped    Process has been terminated
-
-Derive Copy, Clone, Debug, PartialEq, and Eq so states can be compared with ==
-and passed by value without moving ownership.
-
-Layout note: A plain enum without attached data is typically stored compactly
-on the stack (often 1 byte). You will measure this in Milestone 2.
-
-
-PART 2 — THE Process STRUCT
----------------------------
-
-Define a public struct named Process with these private fields:
-
-  Field    Type           Memory role
-  -----    ----           -------------
-  pid      u32            Stack integer — process identifier
-  name     String         Heap-backed name; struct holds ptr/len/cap on stack
-  state    ProcessState   Stack enum — current lifecycle state
-
-You cannot construct Process with a struct literal from outside the crate
-because the fields are private. All access goes through the methods below.
-
-Error type
-----------
-Define a public enum named ProcessError with exactly one variant: EmptyName.
-Derive Debug, PartialEq, and Eq.
-
-Constructor — Milestone 1 (new)
--------------------------------
-Provide an associated function that accepts a u32 PID and an owned String name,
-and returns Result<Process, ProcessError>:
-
-  - If name is empty, return Err(ProcessError::EmptyName).
-  - Otherwise return Ok with a new process whose state is Running.
-
-Accessor methods — Milestone 1
-------------------------------
-Provide methods on an immutable reference (&self):
-
-  - Return the PID as a u32 (copied value).
-  - Return the name as &str — a borrowed view into the heap-allocated String
-    without allocating a new string.
-  - Return the current ProcessState.
-
-Mutator — Milestone 1 (set_state)
+PART 1 — ProcessState AND Process
 ---------------------------------
-Provide a method on a mutable reference (&mut self) that accepts a
-ProcessState and updates the process state in place.
+
+ProcessState variants: Running, Sleeping, Stopped.
+Derive Copy, Clone, Debug, PartialEq, Eq.
+
+Process private fields: pid (u32), name (String), state (ProcessState).
+
+ProcessError: variant EmptyName.
+
+new(pid, name: String) -> Result<Process, ProcessError>
+  Empty name -> Err(EmptyName). Otherwise Ok with state Running.
+
+Accessors on &self: pid -> u32, name -> &str, state -> ProcessState.
+
+set_state on &mut self updates state.
 
 
-PART 3 — MEMORY LAYOUT AND GLOBAL CAPACITY — Milestone 2
---------------------------------------------------------
+PART 2 — Registry
+-----------------
 
-Stack size helpers
-------------------
-On Process, implement three public associated functions (no receiver):
+Private field processes: Vec<Box<Process>>.
 
-  Function                      Returns
-  --------                      -------
-  process_state_stack_bytes     std::mem::size_of::<ProcessState>()
-  process_struct_stack_bytes    std::mem::size_of::<Process>()
-  reference_stack_bytes         std::mem::size_of::<&Process>()
+RegistryError: variant Full.
 
-Why this matters:
+MAX_PROCESSES: const usize = 8.
 
-  - process_struct_stack_bytes reports the stack footprint of a Process value —
-    the String's pointer/length/capacity metadata — not the bytes of the name
-    stored on the heap. Two processes with very different name lengths should
-    report the same struct stack size.
+new() -> empty Vec.
+len(&self) -> count.
+register(&mut self, process: Process) -> Result<(), RegistryError>
+  At capacity -> Full. Else push Box and Ok.
 
-  - reference_stack_bytes reports how large a reference to Process is (one
-    pointer width on typical 64-bit machines).
+get(index) -> Option<&Process> on &self.
+get_mut(index) -> Option<&mut Process> on &mut self.
 
-Global capacity constant
-------------------------
-On Registry (defined in Part 4), declare a public constant named
-MAX_PROCESSES with value 8. This is a compile-time program-wide limit on how
-many processes the registry may hold. Use const, not a mutable static.
-
-
-PART 4 — THE Registry STRUCT
-----------------------------
-
-Define a public struct named Registry with one private field:
-
-  Field       Type                  Meaning
-  -----       ----                  -------
-  processes   Vec<Box<Process>>     Growable heap buffer of process records
-
-Vec stores its elements in a heap-allocated buffer. Each Box<Process> is an
-owning pointer to a Process allocated on the heap. Together they model a
-dynamic collection of heap objects with single ownership.
-
-Error type
-----------
-Define a public enum named RegistryError with exactly one variant: Full.
-Derive Debug, PartialEq, and Eq.
-
-Empty constructor — Milestone 3 (new)
--------------------------------------
-Provide an associated function returning an empty registry (empty Vec).
-
-Length — Milestone 3 (len)
---------------------------
-Provide a method on &self returning how many processes are currently stored.
-
-Register — Milestone 3 (register)
----------------------------------
-Provide a method on &mut self that accepts an owned Process (by value, not by
-reference):
-
-  - If the registry already holds MAX_PROCESSES entries, return
-    Err(RegistryError::Full) without modifying the registry.
-  - Otherwise move the Process into a Box, push it into the Vec, and return
-    Ok(()).
-  - After a successful call, the caller no longer owns the Process value —
-    ownership transferred to the registry.
-
-Immutable lookup — Milestone 4 (get, find_by_pid)
--------------------------------------------------
-Provide methods on &self:
-
-  - get accepts a usize index. Return Some with an immutable reference to the
-    process at that index, or None if the index is out of range.
-
-  - find_by_pid accepts a u32 PID. Search the registry and return Some with a
-    reference to the first matching process, or None if no match exists.
-
-Returned references are borrowed from the registry. They must not be used after
-the registry is dropped (the compiler enforces this via lifetime elision — you
-do not need explicit lifetime annotations in this lab).
-
-Mutable lookup — Milestone 5 (get_mut)
---------------------------------------
-Provide a method on &mut self that accepts a usize index and returns Option with
-a mutable reference to the process at that index, or None if out of range. Use
-this to call set_state on a stored process.
-
-Remove — Milestone 5 (remove)
------------------------------
-Provide a method on &mut self that accepts a usize index:
-
-  - If the index is out of range, return None.
-  - Otherwise remove the process from the Vec, transfer ownership back to the
-    caller as an owned Process, and return Some containing it.
-  - The registry's length decreases by one.
+Look up by index only. Lab 3 adds PID lookup with HashMap.
 
 
 WORKED EXAMPLE
 --------------
 
-After building a registry and registering three processes:
-
-  let mut registry = Registry::new();
-
-  let init = Process::new(1, "init".into())?;
-  let shell = Process::new(42, "shell".into())?;
-  let mut logger = Process::new(99, "logger".into())?;
-  logger.set_state(ProcessState::Sleeping);
-
-  registry.register(init)?;
-  registry.register(shell)?;
-  registry.register(logger)?;
-
-Expected state:
-
-  Check                                      Expected value
-  -----                                      ----------------
-  registry.len()                             3
-  registry.find_by_pid(42).unwrap().name()   "shell"
-  registry.get(2).unwrap().state()           ProcessState::Sleeping
-
-After registry.get_mut(2).unwrap().set_state(ProcessState::Stopped):
-
-  Check                                      Expected value
-  -----                                      ----------------
-  registry.get(2).unwrap().state()           ProcessState::Stopped
-  registry.find_by_pid(1).unwrap().pid()     1
-
-Use this to sanity-check your implementation before running the full test suite.
+let mut registry = Registry::new();
+let init = Process::new(1, "init".into())?;
+let shell = Process::new(42, "shell".into())?;
+registry.register(init)?;
+registry.register(shell)?;
+registry.len() == 3
+registry.get(1).unwrap().name() == "shell"
+registry.get_mut(2).unwrap().set_state(ProcessState::Stopped);
 
 
 RULES
 -----
 
-1. Keep validation logic on Process and storage logic on Registry. Do not use
-   separate free functions beyond method receivers.
-
-2. Required patterns: private struct fields with public accessors; register
-   takes Process by value; store processes in Vec<Box<Process>>; lookup methods
-   return Option with references tied to &self / &mut self.
-
-3. You may use everything from Lab 1 plus: Vec, String, Option, Result, Box,
-   std::mem::size_of, const, and derive macros (Copy, Clone, PartialEq, Eq).
-
-4. Do not use: Rc, Arc, HashMap, BTreeMap, custom traits, I/O, external crates,
-   unsafe, or threads.
-
-5. Assume every Process passed to register was constructed through Process::new
-   with a non-empty name.
+1. Validation on Process; storage on Registry.
+2. register takes Process by value into Vec<Box<Process>>.
+3. Allowed: Lab 1 set + Vec, String, Option, Result, Box, const.
+4. Do not use: Rc, Arc, HashMap, traits, I/O, unsafe, threads.
 
 
 MILESTONES
 ----------
 
-  Milestone   You implement                                           Check with
-  ---------   -----------------------------------------------------  ------------
-  M1          ProcessState, Process, ProcessError, new, accessors,   cargo test m1_
-              set_state
-  M2          size_of helpers, Registry::MAX_PROCESSES               cargo test m2_
-  M3          Registry fields, new, len, register, RegistryError     cargo test m3_
-  M4          get, find_by_pid                                         cargo test m4_
-  M5          get_mut, remove                                          cargo test m5_
+M1  ProcessState, Process, new, accessors, set_state     cargo test m1_
+M2  Registry, MAX_PROCESSES, register, len, Full         cargo test m2_
+M3  get, get_mut                                          cargo test m3_
 
-When all milestones pass, run cargo test with no filter to confirm the full
-suite.
+When M1–M3 pass, run cargo test.
 
 
-CONCEPT CALLOUTS
-----------------
+IF YOU FINISH EARLY
+-------------------
 
-  String vs &str       String owns heap text; &str borrows for the lifetime of
-                       the borrow.
-  Box<T>               Single-owner heap allocation.
-  Vec<T>               Growable heap-backed array; owns its elements.
-  Move semantics       register(process) takes ownership; caller cannot use
-                       process afterward.
-  Borrow checker       get / find_by_pid return references valid only while the
-                       registry borrow is active.
-  Lifetime elision     Compiler ties returned &Process to &self without writing
-                       'a explicitly.
-  const                Compile-time constant (contrast with mutable static).
-
-
-GRADING
--------
-
-  Criterion                                                    Weight
-  -----------------------------------------------------------  ------
-  All tests pass (cargo test)                                  90%
-  Optional: two sentences — one way Rust's borrow checker       10%
-  prevents a bug that C/C++ might allow
-
-
-OPTIONAL STRETCH (not graded)
------------------------------
-
-  - find_by_name(&self, &str) -> Option<&Process> — search by borrowed name.
-  - Read about Rc and when shared ownership is needed instead of Box.
-
-
-FAQ
----
-
-Q: cargo test fails with "cannot find type Process in crate".
-A: You have not defined the struct yet. Start with Milestone 1.
-
-Q: Why Box<Process> inside Vec instead of Vec<Process>?
-A: Both store data on the heap. Box makes heap allocation and single-owner
-   pointer semantics explicit.
-
-Q: Why does name() return &str instead of String?
-A: Returning &str borrows existing heap data without allocating a copy.
-
-Q: Can I use register(&process) instead of register(process)?
-A: No. The assignment requires taking ownership by value so the registry owns
-   each stored process.
-
-Q: What happens if I use a reference after the registry is dropped?
-A: The compiler rejects it — the returned &Process cannot outlive the registry
-   borrow.
-
-Q: Error enums need equality comparisons.
-A: Derive Debug, PartialEq, and Eq on ProcessState, ProcessError, and
-   RegistryError.
+Add find_by_pid or remove. Lab 3 covers HashMap PID lookup and removal.
+Read about size_of and stack vs heap layout.

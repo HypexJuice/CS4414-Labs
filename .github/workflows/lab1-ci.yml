@@ -1,0 +1,22 @@
+name: Lab1 CI
+
+on:
+  push:
+    paths:
+      - "lab1-counter-stats/**"
+      - ".github/workflows/lab1-ci.yml"
+  pull_request:
+    paths:
+      - "lab1-counter-stats/**"
+      - ".github/workflows/lab1-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run lab1 tests with reference solution
+        run: |
+          cp .solution/lab1/src/lib.rs lab1-counter-stats/src/lib.rs
+          cargo test --manifest-path lab1-counter-stats/Cargo.toml

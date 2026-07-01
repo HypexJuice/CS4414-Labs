@@ -16,8 +16,6 @@ On the starter code you should see **compile errors** until you implement the ty
 | M1 | `cargo test m1_` |
 | M2 | `cargo test m2_` |
 | M3 | `cargo test m3_` |
-| M4 | `cargo test m4_` |
-| M5 | `cargo test m5_` |
 | Full suite | `cargo test` |
 
 ## Other commands

@@ -31,6 +31,4 @@ cargo test -- --test-threads=1
 cargo test m1_
 cargo test m2_
 cargo test m3_
-cargo test m4_
-cargo test m5_
 echo "All milestone filters passed"

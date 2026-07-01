@@ -1,13 +1,13 @@
-# Lab 3: Process Registry API
+# Lab 1: Counter Statistics
 
 ## Quick start
 
 ```bash
-cd lab3-process-registry
+cd lab1-counter-stats
 cargo test
 ```
 
-The starter includes **Process from Lab 2**. Implement the `HashMap` registry, `Named`, iterators, and `remove_by_pid` as described in [ASSIGNMENT.md](ASSIGNMENT.md). Tests fail until those pieces work.
+On the starter code you should see **compile errors** until you implement the types described in [ASSIGNMENT.md](ASSIGNMENT.md).
 
 ## Milestone checks
 

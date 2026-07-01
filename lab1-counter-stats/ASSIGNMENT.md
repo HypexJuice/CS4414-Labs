@@ -1,0 +1,120 @@
+# Lab 1: Counter Statistics
+
+## Introduction
+
+Implement a `Stats` struct that records CPU idle samples (integers from 0 to 100). Classify each sample as `Low`, `Medium`, or `High`, and keep running totals. Lab 2 will track the processes on the machine.
+
+Put all code in [`src/lib.rs`](src/lib.rs). Run `cargo test` when you are done.
+
+## Setup
+
+1. Install [rustup](https://rustup.rs/) (stable toolchain).
+2. Clone the course labs repository and enter this crate:
+
+```bash
+git clone https://github.com/HypexJuice/CS4414-Labs.git
+cd CS4414-Labs/lab1-counter-stats
+```
+
+3. Run `cargo test`. The starter code will not compile until you add the types below.
+
+## Part 1 — `IdleLevel` enum
+
+Define a public enum named `IdleLevel` with exactly three variants:
+
+| Variant | Meaning | Sample range |
+|---------|---------|--------------|
+| `Low` | CPU mostly busy | 0 – 33 |
+| `Medium` | Mixed load | 34 – 66 |
+| `High` | CPU mostly idle | 67 – 100 |
+
+Ranges are inclusive. Examples: 33 is `Low`, 34 is `Medium`, 66 is `Medium`, 67 is `High`.
+
+### `from_sample`
+
+On `IdleLevel`, add `from_sample` that:
+
+- Takes one `u32` sample in range 0–100.
+- Returns the matching `IdleLevel` variant.
+- Uses `match` on the sample. Put the thresholds here only; do not copy them into `record`.
+
+Derive `PartialEq` and `Eq`.
+
+## Part 2 — `Stats` struct
+
+Define a public struct named `Stats` with these public fields:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `count` | `usize` | Number of samples recorded |
+| `sum` | `u64` | Running total of sample values |
+| `min` | `u32` | Smallest sample seen so far |
+| `max` | `u32` | Largest sample seen so far |
+| `low_count` | `usize` | Samples classified as `Low` |
+| `medium_count` | `usize` | Samples classified as `Medium` |
+| `high_count` | `usize` | Samples classified as `High` |
+
+Fields stay public in this lab. A later lab makes them private.
+
+## Part 3 — Methods
+
+Add an `impl Stats` block.
+
+### `new`
+
+Returns a new empty `Stats`:
+
+- Set `count`, `sum`, and all three tier counters to zero.
+- Set `min` to `u32::MAX` and `max` to `0`, so the first `record` call can set real extrema without a special empty case.
+
+### `record`
+
+Takes `&mut self` and one in-range `u32` sample:
+
+- Increment `count` by 1.
+- Add the sample to `sum`.
+- Update `min` and `max` if needed.
+- Call `IdleLevel::from_sample` and increment the matching tier counter.
+
+### `from_samples`
+
+Takes a fixed-size array of eight `u32` samples, calls `new`, loops with `for`, calls `record` on each element, and returns the `Stats`.
+
+## Worked example
+
+After `from_samples` on `[42, 15, 88, 15, 60, 42, 100, 7]`:
+
+| Field | Expected value |
+|-------|----------------|
+| `count` | 8 |
+| `sum` | 369 |
+| `min` | 7 |
+| `max` | 100 |
+| `low_count` | 3 — samples 15, 15, 7 |
+| `medium_count` | 3 — samples 42, 60, 42 |
+| `high_count` | 2 — samples 88, 100 |
+
+Check your code against these numbers before running the full test suite.
+
+## Rules
+
+1. Classification logic lives on `IdleLevel`; aggregation on `Stats`. No extra free functions.
+2. Use `&mut self` on `record`, `match` in `from_sample`, and `Self` or `Stats` as the return type on constructors.
+3. Allowed: `struct`, `enum`, `match`, `impl`, `let`, `mut`, `if`/`else`, `for`, derive macros such as `PartialEq`.
+4. Do not use: `Vec`, `Option`, `Result`, traits, I/O, owned `String`, or moving fields out of `Stats`.
+5. Every sample passed to `record` is in range 0–100.
+
+## Milestones
+
+| Milestone | You implement | Check with |
+|-----------|---------------|------------|
+| M1 | `IdleLevel`, `Stats` fields, `new` | `cargo test m1_` |
+| M2 | `from_sample` with `match` | `cargo test m2_` |
+| M3 | `record` | `cargo test m3_` |
+| M4 | `from_samples` | `cargo test m4_` |
+
+When M1–M4 pass, run `cargo test`.
+
+## If you finish early
+
+Add `mean` on `&self` returning `u32`: integer average `sum / count`, or `0` when `count` is zero.

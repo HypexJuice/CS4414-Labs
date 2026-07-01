@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LAB="$ROOT/lab3-process-registry"
+LAB="$ROOT/lab1-counter-stats"
 STARTER="$LAB/src/lib.rs"
-SOLUTION="$ROOT/.solution/lab3/src/lib.rs"
+SOLUTION="$ROOT/.solution/lab1/src/lib.rs"
 BACKUP="$(mktemp)"
 
 cleanup() {
@@ -16,7 +16,7 @@ trap cleanup EXIT
 
 cp "$STARTER" "$BACKUP"
 
-echo "=== Starter (should FAIL tests) ==="
+echo "=== Starter (should FAIL to compile) ==="
 if (cd "$LAB" && cargo test 2>&1); then
   echo "ERROR: starter unexpectedly passed"
   exit 1
